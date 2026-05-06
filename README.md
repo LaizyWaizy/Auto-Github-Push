@@ -64,6 +64,11 @@ The public copy keeps the same header row and removes the data rows. The private
 
 Open this folder in VS Code, then press `F5` and choose **VS Code Extension Development** if prompted. A new Extension Development Host window opens with the Auto GitHub Push sidebar in the activity bar.
 
+## Credit
+Most of the project was made by me, with AI helping on the JavaScript. The UI was me LMAO. I suck at anything with java script so this was mainly just ai doing the backend for me.
+
+
+
 To build a local `.vsix` package:
 
 ```powershell
