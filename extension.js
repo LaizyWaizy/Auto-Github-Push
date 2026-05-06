@@ -109,9 +109,19 @@ function webviewHtml(webview, extensionUri) {
     label { display: grid; gap: 5px; }
     .stack { display: grid; gap: 14px; }
     .head { display: grid; gap: 5px; padding-bottom: 12px; border-bottom: 1px solid var(--vscode-panel-border); }
-    .actions { display: grid; gap: 8px; grid-template-columns: 1fr 1fr; }
+    .actions { display: grid; gap: 8px; grid-template-columns: 1fr auto; }
+    .action-menu { position: relative; }
+    .action-menu summary { align-items: center; background: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); cursor: pointer; display: inline-flex; font-weight: 600; justify-content: center; list-style: none; min-height: 32px; padding: 0 10px; user-select: none; }
+    .action-menu summary::-webkit-details-marker { display: none; }
+    .action-menu summary::after { content: "v"; font-size: 0.9em; margin-left: 7px; }
+    .action-menu[open] summary::after { content: "^"; }
+    .menu-list { background: var(--vscode-menu-background, var(--vscode-editor-background)); border: 1px solid var(--vscode-menu-border, var(--vscode-panel-border)); box-shadow: 0 8px 20px rgba(0, 0, 0, 0.22); display: grid; gap: 6px; min-width: 170px; padding: 8px; position: absolute; right: 0; top: calc(100% + 6px); z-index: 2; }
+    .menu-list button { justify-content: flex-start; width: 100%; }
     .wide { grid-column: 1 / -1; }
     .panel { border: 1px solid var(--vscode-panel-border); padding: 10px; display: grid; gap: 8px; }
+    .disclosure { border: 1px solid var(--vscode-panel-border); }
+    .disclosure summary { cursor: pointer; font-weight: 700; list-style-position: inside; padding: 10px; }
+    .disclosure-body { display: grid; gap: 8px; padding: 0 10px 10px; }
     .status { display: grid; gap: 6px; }
     .row { display: flex; justify-content: space-between; gap: 10px; }
     .muted { color: var(--vscode-descriptionForeground); }
@@ -119,6 +129,8 @@ function webviewHtml(webview, extensionUri) {
     .privacy-option span { display: grid; gap: 2px; min-width: 0; }
     .privacy-option strong, .privacy-option small, .finding { overflow-wrap: anywhere; }
     .privacy-group { display: grid; gap: 6px; }
+    .privacy-disclosure { border: 1px solid var(--vscode-panel-border); display: grid; gap: 6px; padding: 8px; }
+    .privacy-disclosure summary { cursor: pointer; font-weight: 700; list-style-position: inside; }
     .finding { border: 1px solid var(--vscode-panel-border); padding: 8px; }
     .finding strong { color: var(--vscode-errorForeground); display: block; }
     .form { display: grid; gap: 8px; }
@@ -131,13 +143,18 @@ function webviewHtml(webview, extensionUri) {
       <p id="workspace">Loading workspace...</p>
     </section>
 
-    <section class="actions">
-      <button id="refresh" class="secondary" type="button">Refresh</button>
-      <button id="scan" type="button">Scan</button>
-      <button id="init" type="button">Make Repo</button>
-      <button id="ignore" type="button">Fix Ignore</button>
-      <button id="github" type="button">Create GitHub</button>
-      <button id="push" class="danger" type="button">Commit + Push</button>
+    <section class="actions" aria-label="Project actions">
+      <button id="primaryAction" type="button">Scan</button>
+      <details id="actionMenu" class="action-menu">
+        <summary role="button">More</summary>
+        <div class="menu-list">
+          <button id="refresh" class="secondary" type="button">Refresh</button>
+          <button id="init" type="button">Make Repo</button>
+          <button id="ignore" type="button">Fix Ignore</button>
+          <button id="github" type="button">Create GitHub</button>
+          <button id="push" class="danger" type="button">Commit + Push</button>
+        </div>
+      </details>
     </section>
 
     <section class="panel status">
@@ -153,12 +170,14 @@ function webviewHtml(webview, extensionUri) {
       <div id="privacy" class="stack"></div>
     </section>
 
-    <section class="panel form">
-      <h2>Commit / Repo Details</h2>
-      <label>Commit message<input id="message" value="Manual project backup"></label>
-      <label>GitHub repo name<input id="repoName"></label>
-      <label>Visibility<select id="visibility"><option value="private">Private</option><option value="public">Public</option></select></label>
-    </section>
+    <details class="disclosure">
+      <summary>Commit / Repo Details</summary>
+      <section class="disclosure-body form">
+        <label>Commit message<input id="message" value="Manual project backup"></label>
+        <label>GitHub repo name<input id="repoName"></label>
+        <label>Visibility<select id="visibility"><option value="private">Private</option><option value="public">Public</option></select></label>
+      </section>
+    </details>
 
     <section class="panel">
       <h2>Findings</h2>
@@ -178,8 +197,11 @@ function webviewHtml(webview, extensionUri) {
       findings: document.querySelector("#findings"),
       message: document.querySelector("#message"),
       repoName: document.querySelector("#repoName"),
-      visibility: document.querySelector("#visibility")
+      visibility: document.querySelector("#visibility"),
+      primaryAction: document.querySelector("#primaryAction"),
+      push: document.querySelector("#push")
     };
+    let latestProject = null;
 
     function post(type, payload = {}) {
       vscode.postMessage({ type, ...payload });
@@ -191,6 +213,20 @@ function webviewHtml(webview, extensionUri) {
         ignoreRules: inputs.filter((input) => input.dataset.kind === "ignore" && input.checked).map((input) => input.dataset.value),
         csvPrivatePaths: inputs.filter((input) => input.dataset.kind === "csv" && input.checked).map((input) => input.dataset.value)
       };
+    }
+
+    function canPush(project) {
+      return Boolean(project && project.isGitRepo && project.remote);
+    }
+
+    function renderPrimaryAction(project) {
+      const readyToPush = canPush(project);
+      els.primaryAction.textContent = readyToPush ? "Scan + Commit + Push" : "Scan";
+      els.primaryAction.title = readyToPush
+        ? "Run the privacy scan, then commit and push if it is clean."
+        : "Run the privacy scan.";
+      els.push.disabled = !readyToPush;
+      els.push.title = readyToPush ? "" : "Add an origin remote before pushing.";
     }
 
     function option(title, detail, checked, disabled, kind, value) {
@@ -224,11 +260,11 @@ function webviewHtml(webview, extensionUri) {
 
       for (const [title, items, renderer] of groups) {
         if (!items.length) continue;
-        const group = document.createElement("div");
-        group.className = "privacy-group";
-        const h3 = document.createElement("h3");
-        h3.textContent = title;
-        group.append(h3, ...items.map(renderer));
+        const group = title === "Already ignored" ? document.createElement("details") : document.createElement("div");
+        group.className = title === "Already ignored" ? "privacy-disclosure" : "privacy-group";
+        const heading = document.createElement(title === "Already ignored" ? "summary" : "h3");
+        heading.textContent = title === "Already ignored" ? title + " (" + items.length + ")" : title;
+        group.append(heading, ...items.map(renderer));
         els.privacy.append(group);
       }
 
@@ -275,22 +311,35 @@ function webviewHtml(webview, extensionUri) {
     window.addEventListener("message", (event) => {
       const message = event.data;
       if (message.type === "state") {
+        latestProject = message.project;
         els.workspace.textContent = message.project.path;
         els.repoName.value ||= message.project.name;
         els.gitStatus.textContent = message.project.isGitRepo ? "Repository found" : "Not a Git repo";
         els.remoteStatus.textContent = message.project.remote || "No origin";
         els.githubStatus.textContent = message.github.loggedIn ? (message.github.account || "Connected") : "Not connected";
+        renderPrimaryAction(message.project);
         renderPrivacy(message.privacy);
         renderFindings(message.scan);
       }
     });
 
     document.querySelector("#refresh").addEventListener("click", () => post("refresh"));
-    document.querySelector("#scan").addEventListener("click", () => post("scan"));
+    document.querySelector("#primaryAction").addEventListener("click", () => {
+      if (canPush(latestProject)) {
+        post("push", { privacy: privacyChoices(), message: els.message.value });
+        return;
+      }
+      post("scan");
+    });
     document.querySelector("#init").addEventListener("click", () => post("init", { privacy: privacyChoices() }));
     document.querySelector("#ignore").addEventListener("click", () => post("ignore", { privacy: privacyChoices() }));
     document.querySelector("#github").addEventListener("click", () => post("github", { privacy: privacyChoices(), repoName: els.repoName.value, visibility: els.visibility.value, message: els.message.value }));
     document.querySelector("#push").addEventListener("click", () => post("push", { privacy: privacyChoices(), message: els.message.value }));
+    document.querySelector("#actionMenu").addEventListener("click", (event) => {
+      if (event.target.tagName === "BUTTON") {
+        event.currentTarget.removeAttribute("open");
+      }
+    });
     post("refresh");
   </script>
 </body>

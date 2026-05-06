@@ -8,12 +8,11 @@ Open the project folder you want to push, then open the **Auto GitHub Push** ico
 
 Use the sidebar to:
 
-- scan for sensitive-looking info
+- scan for sensitive-looking info, or scan + commit + push from the main button when the project already has an `origin` remote
 - choose which `.gitignore` rules to apply
 - make plain public CSV copies
 - initialize Git
 - create a GitHub repo
-- commit and push
 
 You can also press `Ctrl+Shift+P` and run:
 
@@ -39,7 +38,7 @@ $env:PROJECTS_DIR="C:\Users\jm774\Documents\Code"; npm start
 - Phase 2: opens the selected project in VS Code.
 - Phase 3: scans a folder for sensitive-looking files or secrets before creating a local Git repository.
 - Phase 4: creates or fixes `.gitignore`.
-- Phase 5: commits and pushes only after an explicit confirmation dialog and a clean sensitive-info scan.
+- Phase 5: commits and pushes only after a clean sensitive-info scan. In the VS Code sidebar, an existing repo with an `origin` remote gets one main **Scan + Commit + Push** button.
 - Phase 6: optionally adds or removes a Windows startup script.
 
 ## Private CSV Files
