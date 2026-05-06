@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Auto Github Push</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="titlebar">
+        <div class="brand-block">
+          <span class="app-mark" aria-hidden="true">AG</span>
+          <div>
+            <p class="eyebrow">Local project safety</p>
+            <h1>Auto Github Push</h1>
+          </div>
+        </div>
+        <button id="refreshButton" class="toolbar-button" type="button" title="Refresh projects" aria-label="Refresh projects">
+          Refresh
+        </button>
+      </header>
+
+      <section class="overview" aria-live="polite">
+        <div class="scan-path">
+          <span class="label">Scanning</span>
+          <strong id="rootPath">Loading...</strong>
+        </div>
+        <div class="scan-stats" aria-label="Project status summary">
+          <div class="stat safe">
+            <span id="safeCount">0</span>
+            <strong>Safe</strong>
+          </div>
+          <div class="stat attention">
+            <span id="attentionCount">0</span>
+            <strong>Review</strong>
+          </div>
+          <div class="stat blocked">
+            <span id="blockedCount">0</span>
+            <strong>Blocked</strong>
+          </div>
+        </div>
+        <label class="startup-toggle">
+          <input id="startupToggle" type="checkbox">
+          <span>Run when Windows starts</span>
+        </label>
+        <div class="github-chip">
+          <span class="label">GitHub</span>
+          <strong id="githubStatus">Checking...</strong>
+        </div>
+      </section>
+
+      <section class="workspace">
+        <aside class="project-list" aria-label="Projects">
+          <div class="list-header">
+            <div>
+              <h2>Folders</h2>
+              <p>Pick a project to inspect</p>
+            </div>
+            <span id="projectCount" class="count-pill">0</span>
+          </div>
+          <div id="projects" class="projects"></div>
+        </aside>
+
+        <section class="detail-panel" aria-label="Selected project">
+          <div id="emptyState" class="empty-state">
+            <div class="empty-icon" aria-hidden="true"></div>
+            <h2>Select a folder</h2>
+            <p>Safety checks and project actions will appear here.</p>
+          </div>
+          <div id="projectDetail" class="project-detail hidden">
+            <div class="detail-head">
+              <div>
+                <h2 id="selectedName"></h2>
+                <p id="selectedPath" class="path-text"></p>
+              </div>
+              <span id="selectedBadge" class="status-badge"></span>
+            </div>
+
+            <div class="action-row">
+              <button id="openButton" class="primary" type="button">Open in VS Code</button>
+              <button id="scanButton" type="button">Rescan</button>
+              <button id="initializeButton" class="success" type="button">Scan + Make Repo</button>
+              <button id="githubButton" class="success" type="button">Create GitHub Repo</button>
+              <button id="gitignoreButton" type="button">Fix .gitignore</button>
+              <button id="commitButton" class="danger" type="button">Commit and Push</button>
+            </div>
+
+            <div class="status-grid">
+              <div class="status-tile">
+                <span class="label">Git</span>
+                <strong id="gitStatus"></strong>
+              </div>
+              <div class="status-tile">
+                <span class="label">Ignore file</span>
+                <strong id="ignoreStatus"></strong>
+              </div>
+              <div class="status-tile">
+                <span class="label">Remote</span>
+                <strong id="remoteStatus"></strong>
+              </div>
+              <div class="status-tile">
+                <span class="label">Safety scan</span>
+                <strong id="scanStatus">Not scanned yet</strong>
+              </div>
+            </div>
+
+            <div class="message-stack">
+              <div class="message-panel">
+                <h3>Needs Attention</h3>
+                <ul id="warnings"></ul>
+              </div>
+              <div class="message-panel">
+                <h3>Sensitive Scan</h3>
+                <ul id="scanFindings"></ul>
+              </div>
+              <div class="message-panel">
+                <h3>Current Changes</h3>
+                <ul id="changes"></ul>
+              </div>
+            </div>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <dialog id="confirmDialog">
+      <form method="dialog" class="confirm-box">
+        <h2>Confirm commit and push</h2>
+        <p id="confirmProject"></p>
+        <label>
+          Commit message
+          <input id="commitMessage" type="text" value="Manual project backup">
+        </label>
+        <section class="privacy-review">
+          <div>
+            <h3>Privacy review</h3>
+            <p>Keep the checked choices before this push.</p>
+          </div>
+          <div id="pushPrivacyReview" class="privacy-options"></div>
+        </section>
+        <div class="dialog-actions">
+          <button value="cancel" type="submit">Cancel</button>
+          <button id="confirmPushButton" class="danger" value="confirm" type="submit">Confirm Push</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="initializeDialog">
+      <form method="dialog" class="confirm-box">
+        <h2>Scan + make repo</h2>
+        <p id="initializeProject"></p>
+        <section class="privacy-review">
+          <div>
+            <h3>Privacy review</h3>
+            <p>Keep the checked choices before the local repo is created.</p>
+          </div>
+          <div id="initializePrivacyReview" class="privacy-options"></div>
+        </section>
+        <div class="dialog-actions">
+          <button value="cancel" type="submit">Cancel</button>
+          <button id="confirmInitializeButton" class="success" value="confirm" type="submit">Scan and Create</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="gitignoreDialog">
+      <form method="dialog" class="confirm-box">
+        <h2>Fix .gitignore</h2>
+        <p id="gitignoreProject"></p>
+        <section class="privacy-review">
+          <div>
+            <h3>Privacy review</h3>
+            <p>Choose which suggested rules get added.</p>
+          </div>
+          <div id="gitignorePrivacyReview" class="privacy-options"></div>
+        </section>
+        <div class="dialog-actions">
+          <button value="cancel" type="submit">Cancel</button>
+          <button id="confirmGitignoreButton" value="confirm" type="submit">Apply Rules</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="githubDialog">
+      <form method="dialog" class="confirm-box">
+        <h2>Create GitHub repository</h2>
+        <p id="githubProject"></p>
+        <label>
+          Repository name
+          <input id="githubRepoName" type="text">
+        </label>
+        <label>
+          Visibility
+          <select id="githubVisibility">
+            <option value="private" selected>Private</option>
+            <option value="public">Public</option>
+          </select>
+        </label>
+        <label>
+          Commit message
+          <input id="githubCommitMessage" type="text" value="Initial project backup">
+        </label>
+        <section class="privacy-review">
+          <div>
+            <h3>Privacy review</h3>
+            <p>Keep the checked choices before creating the repo.</p>
+          </div>
+          <div id="githubPrivacyReview" class="privacy-options"></div>
+        </section>
+        <div class="dialog-actions">
+          <button value="cancel" type="submit">Cancel</button>
+          <button id="confirmGithubButton" class="success" value="confirm" type="submit">Scan and Create</button>
+        </div>
+      </form>
+    </dialog>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <script src="app.js"></script>
+  </body>
+</html>

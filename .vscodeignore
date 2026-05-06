@@ -1,0 +1,10 @@
+node_modules/**
+public/**
+main.js
+preload.js
+launch-electron.js
+package-lock.json
+*.vsix
+dist/**
+build/**
+*.log

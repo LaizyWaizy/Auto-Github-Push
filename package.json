@@ -1,0 +1,71 @@
+{
+  "name": "auto-github-push",
+  "displayName": "Auto GitHub Push",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A local safety dashboard for opening, preparing, and manually pushing GitHub projects.",
+  "publisher": "local",
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "*",
+    "onView:autoGithubPush.view",
+    "onCommand:autoGithubPush.open",
+    "onCommand:autoGithubPush.scan",
+    "onCommand:autoGithubPush.fixGitignore",
+    "onCommand:autoGithubPush.commitAndPush"
+  ],
+  "main": "./extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "autoGithubPush",
+          "title": "Auto GitHub Push",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "autoGithubPush": [
+        {
+          "type": "webview",
+          "id": "autoGithubPush.view",
+          "name": "Project Safety"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "autoGithubPush.open",
+        "title": "Auto GitHub Push: Open"
+      },
+      {
+        "command": "autoGithubPush.scan",
+        "title": "Auto GitHub Push: Scan Workspace"
+      },
+      {
+        "command": "autoGithubPush.fixGitignore",
+        "title": "Auto GitHub Push: Fix .gitignore"
+      },
+      {
+        "command": "autoGithubPush.commitAndPush",
+        "title": "Auto GitHub Push: Commit and Push"
+      }
+    ]
+  },
+  "scripts": {
+    "app": "node launch-electron.js",
+    "start": "node launch-electron.js",
+    "check": "node --check extension.js && node --check project-service.js && node --check main.js && node --check preload.js && node --check public/app.js",
+    "package-extension": "npx @vscode/vsce package --allow-missing-repository"
+  },
+  "devDependencies": {
+    "electron": "^41.5.0"
+  },
+  "engines": {
+    "node": ">=20",
+    "vscode": "^1.90.0"
+  }
+}
